@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using KeyVault.CertificateRotation.Internal;
 
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Management.FrontDoor;
@@ -8,9 +11,9 @@ using Microsoft.Extensions.Logging;
 
 namespace KeyVault.CertificateRotation
 {
-    public class FrontDoorUpdaterFunction
+    public class FrontDoorRotationFunction
     {
-        public FrontDoorUpdaterFunction(KeyVaultClient keyVaultClient, FrontDoorManagementClient frontDoorManagementClient)
+        public FrontDoorRotationFunction(KeyVaultClient keyVaultClient, FrontDoorManagementClient frontDoorManagementClient)
         {
             _keyVaultClient = keyVaultClient;
             _frontDoorManagementClient = frontDoorManagementClient;
@@ -19,16 +22,18 @@ namespace KeyVault.CertificateRotation
         private readonly KeyVaultClient _keyVaultClient;
         private readonly FrontDoorManagementClient _frontDoorManagementClient;
 
-        [FunctionName("FrontDoorUpdater")]
-        public async Task FrontDoorUpdater([TimerTrigger("0 0 0 * * *")] TimerInfo timer, ILogger log)
+        [FunctionName(nameof(FrontDoorRotation))]
+        public async Task FrontDoorRotation([TimerTrigger("0 0 0 * * *")] TimerInfo timer, ILogger log)
         {
-            var frontDoors = await _frontDoorManagementClient.FrontDoors.ListAsync();
+            var tasks = new List<Task>();
+
+            var frontDoors = await _frontDoorManagementClient.FrontDoors.SafeListAllAsync();
 
             foreach (var frontDoor in frontDoors)
             {
-                var resourceGroupName = ExtractResourceGroup(frontDoor.Id);
+                var resourceGroupName = frontDoor.ResourceGroupName();
 
-                var frontendEndpoints = await _frontDoorManagementClient.FrontendEndpoints.ListByFrontDoorAsync(resourceGroupName, frontDoor.Name);
+                var frontendEndpoints = await _frontDoorManagementClient.FrontendEndpoints.ListAllByFrontDoorAsync(resourceGroupName, frontDoor.Name);
 
                 foreach (var frontendEndpoint in frontendEndpoints)
                 {
@@ -37,7 +42,7 @@ namespace KeyVault.CertificateRotation
                         continue;
                     }
 
-                    var vaultName = ExtractzVaultName(frontendEndpoint.CustomHttpsConfiguration.Vault.Id);
+                    var vaultName = ExtractVaultName(frontendEndpoint.CustomHttpsConfiguration.Vault.Id);
 
                     var latestCertificate = await _keyVaultClient.GetCertificateAsync(
                         $"https://{vaultName}.vault.azure.net/",
@@ -50,19 +55,14 @@ namespace KeyVault.CertificateRotation
 
                     frontendEndpoint.CustomHttpsConfiguration.SecretVersion = latestCertificate.CertificateIdentifier.Version;
 
-                    await _frontDoorManagementClient.FrontendEndpoints.EnableHttpsAsync(resourceGroupName, frontDoor.Name, frontendEndpoint.Name, frontendEndpoint.CustomHttpsConfiguration);
+                    tasks.Add(_frontDoorManagementClient.FrontendEndpoints.EnableHttpsAsync(resourceGroupName, frontDoor.Name, frontendEndpoint.Name, frontendEndpoint.CustomHttpsConfiguration));
                 }
             }
+
+            await Task.WhenAll(tasks);
         }
 
-        private static string ExtractResourceGroup(string resourceId)
-        {
-            var values = resourceId.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-            return values[3];
-        }
-
-        private static string ExtractzVaultName(string resourceId)
+        private static string ExtractVaultName(string resourceId)
         {
             var values = resourceId.Split('/', StringSplitOptions.RemoveEmptyEntries);
 

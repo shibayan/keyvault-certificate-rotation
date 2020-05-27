@@ -1,4 +1,6 @@
-﻿using KeyVault.CertificateRotation;
+﻿using System;
+
+using KeyVault.CertificateRotation;
 using KeyVault.CertificateRotation.Internal;
 
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
@@ -17,23 +19,19 @@ namespace KeyVault.CertificateRotation
     {
         public override void Configure(IFunctionsHostBuilder builder)
         {
+            var subscriptionId = Environment.GetEnvironmentVariable("WEBSITE_OWNER_NAME").Split('+')[0];
+
             builder.Services.AddSingleton(provider =>
                 new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(new AzureServiceTokenProvider().KeyVaultTokenCallback)));
 
-            builder.Services.AddSingleton(provider =>
+            builder.Services.AddSingleton(provider => new CdnManagementClient(new TokenCredentials(new AppAuthenticationTokenProvider()))
             {
-                return new CdnManagementClient(new TokenCredentials(new AppAuthenticationTokenProvider()))
-                {
-                    SubscriptionId = "6f43ad45-521d-4bd7-9d01-f95a290041fe"
-                };
+                SubscriptionId = subscriptionId
             });
 
-            builder.Services.AddSingleton(provider =>
+            builder.Services.AddSingleton(provider => new FrontDoorManagementClient(new TokenCredentials(new AppAuthenticationTokenProvider()))
             {
-                return new FrontDoorManagementClient(new TokenCredentials(new AppAuthenticationTokenProvider()))
-                {
-                    SubscriptionId = "6f43ad45-521d-4bd7-9d01-f95a290041fe"
-                };
+                SubscriptionId = subscriptionId
             });
         }
     }

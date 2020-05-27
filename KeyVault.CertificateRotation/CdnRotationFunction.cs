@@ -1,5 +1,7 @@
-using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using KeyVault.CertificateRotation.Internal;
 
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Management.Cdn;
@@ -9,9 +11,9 @@ using Microsoft.Extensions.Logging;
 
 namespace KeyVault.CertificateRotation
 {
-    public class CdnUpdaterFunction
+    public class CdnRotationFunction
     {
-        public CdnUpdaterFunction(KeyVaultClient keyVaultClient, CdnManagementClient cdnManagementClient)
+        public CdnRotationFunction(KeyVaultClient keyVaultClient, CdnManagementClient cdnManagementClient)
         {
             _keyVaultClient = keyVaultClient;
             _cdnManagementClient = cdnManagementClient;
@@ -20,20 +22,22 @@ namespace KeyVault.CertificateRotation
         private readonly KeyVaultClient _keyVaultClient;
         private readonly CdnManagementClient _cdnManagementClient;
 
-        [FunctionName(nameof(CdnUpdater))]
-        public async Task CdnUpdater([TimerTrigger("0 0 * * * *")] TimerInfo timer, ILogger log)
+        [FunctionName(nameof(CdnRotation))]
+        public async Task CdnRotation([TimerTrigger("0 0 * * * *")] TimerInfo timer, ILogger log)
         {
-            var cdnProfiles = await _cdnManagementClient.Profiles.ListAsync();
+            var tasks = new List<Task>();
+
+            var cdnProfiles = await _cdnManagementClient.Profiles.SafeListAllAsync();
 
             foreach (var cdnProfile in cdnProfiles)
             {
-                var resourceGroupName = ExtractResourceGroup(cdnProfile.Id);
+                var resourceGroupName = cdnProfile.ResourceGroupName();
 
-                var cdnEndpoints = await _cdnManagementClient.Endpoints.ListByProfileAsync(resourceGroupName, cdnProfile.Name);
+                var cdnEndpoints = await _cdnManagementClient.Endpoints.ListAllByProfileAsync(resourceGroupName, cdnProfile.Name);
 
                 foreach (var cdnEndpoint in cdnEndpoints)
                 {
-                    var cdnCustomDomains = await _cdnManagementClient.CustomDomains.ListByEndpointAsync(resourceGroupName, cdnProfile.Name, cdnEndpoint.Name);
+                    var cdnCustomDomains = await _cdnManagementClient.CustomDomains.ListAllByEndpointAsync(resourceGroupName, cdnProfile.Name, cdnEndpoint.Name);
 
                     foreach (var cdnCustomDomain in cdnCustomDomains)
                     {
@@ -55,17 +59,12 @@ namespace KeyVault.CertificateRotation
 
                         httpsParameters.CertificateSourceParameters.SecretVersion = latestCertificate.CertificateIdentifier.Version;
 
-                        await _cdnManagementClient.CustomDomains.EnableCustomHttpsAsync(resourceGroupName, cdnProfile.Name, cdnEndpoint.Name, cdnCustomDomain.Name, httpsParameters);
+                        tasks.Add(_cdnManagementClient.CustomDomains.EnableCustomHttpsAsync(resourceGroupName, cdnProfile.Name, cdnEndpoint.Name, cdnCustomDomain.Name, httpsParameters));
                     }
                 }
             }
-        }
 
-        private static string ExtractResourceGroup(string resourceId)
-        {
-            var values = resourceId.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-            return values[3];
+            await Task.WhenAll(tasks);
         }
     }
 }
