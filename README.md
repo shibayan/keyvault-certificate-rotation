@@ -1,7 +1,5 @@
 # keyvault-certificate-rotation
 
-Key Vault Certificate used by CDN / Front Door is "rolled update"
-
 ![Build](https://github.com/shibayan/keyvault-certificate-rotation/workflows/Build/badge.svg)
 [![Release](https://img.shields.io/github/release/shibayan/keyvault-certificate-rotation.svg)](https://github.com/shibayan/keyvault-certificate-rotation/releases/latest)
 [![License](https://img.shields.io/github/license/shibayan/keyvault-certificate-rotation.svg)](https://github.com/shibayan/keyvault-certificate-rotation/blob/master/LICENSE)
