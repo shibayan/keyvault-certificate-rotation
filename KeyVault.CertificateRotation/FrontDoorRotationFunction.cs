@@ -31,18 +31,26 @@ namespace KeyVault.CertificateRotation
 
             foreach (var frontDoor in frontDoors)
             {
+                log.LogInformation($"Front Door: {frontDoor.Name}");
+
                 var resourceGroupName = frontDoor.ResourceGroupName();
 
                 var frontendEndpoints = await _frontDoorManagementClient.FrontendEndpoints.ListAllByFrontDoorAsync(resourceGroupName, frontDoor.Name);
 
                 foreach (var frontendEndpoint in frontendEndpoints)
                 {
+                    log.LogInformation($"Frontend Endpoint: {frontendEndpoint.Name}");
+
                     if (frontendEndpoint.CustomHttpsConfiguration?.CertificateSource != "AzureKeyVault")
                     {
                         continue;
                     }
 
                     var vaultName = ExtractVaultName(frontendEndpoint.CustomHttpsConfiguration.Vault.Id);
+
+                    log.LogInformation($"Vault Name: {vaultName}");
+                    log.LogInformation($"Secret Name: {frontendEndpoint.CustomHttpsConfiguration.SecretName}");
+                    log.LogInformation($"Secret Version: {frontendEndpoint.CustomHttpsConfiguration.SecretVersion}");
 
                     var latestCertificate = await _keyVaultClient.GetCertificateAsync(
                         $"https://{vaultName}.vault.azure.net/",
@@ -52,6 +60,8 @@ namespace KeyVault.CertificateRotation
                     {
                         continue;
                     }
+
+                    log.LogInformation($"Target Secret Version: {latestCertificate.CertificateIdentifier.Version}");
 
                     frontendEndpoint.CustomHttpsConfiguration.SecretVersion = latestCertificate.CertificateIdentifier.Version;
 

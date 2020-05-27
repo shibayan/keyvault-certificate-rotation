@@ -23,7 +23,7 @@ namespace KeyVault.CertificateRotation
         private readonly CdnManagementClient _cdnManagementClient;
 
         [FunctionName(nameof(CdnRotation))]
-        public async Task CdnRotation([TimerTrigger("0 0 * * * *")] TimerInfo timer, ILogger log)
+        public async Task CdnRotation([TimerTrigger("0 0 0 * * *")] TimerInfo timer, ILogger log)
         {
             var tasks = new List<Task>();
 
@@ -31,22 +31,32 @@ namespace KeyVault.CertificateRotation
 
             foreach (var cdnProfile in cdnProfiles)
             {
+                log.LogInformation($"CDN Proflie: {cdnProfile.Name}");
+
                 var resourceGroupName = cdnProfile.ResourceGroupName();
 
                 var cdnEndpoints = await _cdnManagementClient.Endpoints.ListAllByProfileAsync(resourceGroupName, cdnProfile.Name);
 
                 foreach (var cdnEndpoint in cdnEndpoints)
                 {
+                    log.LogInformation($"CDN Endpoint: {cdnEndpoint.Name}");
+
                     var cdnCustomDomains = await _cdnManagementClient.CustomDomains.ListAllByEndpointAsync(resourceGroupName, cdnProfile.Name, cdnEndpoint.Name);
 
                     foreach (var cdnCustomDomain in cdnCustomDomains)
                     {
+                        log.LogInformation($"Custom Domain: {cdnCustomDomain.Name}");
+
                         var httpsParameters = cdnCustomDomain.CustomHttpsParameters as UserManagedHttpsParameters;
 
                         if (httpsParameters == null)
                         {
                             continue;
                         }
+
+                        log.LogInformation($"Vault Name: {httpsParameters.CertificateSourceParameters.VaultName}");
+                        log.LogInformation($"Secret Name: {httpsParameters.CertificateSourceParameters.SecretName}");
+                        log.LogInformation($"Secret Version: {httpsParameters.CertificateSourceParameters.SecretVersion}");
 
                         var latestCertificate = await _keyVaultClient.GetCertificateAsync(
                             $"https://{httpsParameters.CertificateSourceParameters.VaultName}.vault.azure.net/",
@@ -56,6 +66,8 @@ namespace KeyVault.CertificateRotation
                         {
                             continue;
                         }
+
+                        log.LogInformation($"Target Secret Version: {latestCertificate.CertificateIdentifier.Version}");
 
                         httpsParameters.CertificateSourceParameters.SecretVersion = latestCertificate.CertificateIdentifier.Version;
 
