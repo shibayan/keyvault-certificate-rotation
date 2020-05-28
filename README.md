@@ -10,7 +10,7 @@ Simply set up an IAM to the Azure Key Vault and Azure CDN / Front Door where the
 
 ## Requirements
 
-You will need the follwing:
+You will need the following:
 - Azure Subscription (required to deploy this solution)
 - Azure Key Vault
 - Azure CDN / Front Door (pre-set up Key Vault certificates)
