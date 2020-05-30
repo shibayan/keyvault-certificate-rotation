@@ -26,7 +26,7 @@ You will need the following:
 
 ### 2. Add access control (IAM) to Azure CDN / Front Door
 
-Open the `Access Control (IAM)` of the target CDN Profile / Front Door or resource group containing the CDN Profile / Front Door, and assign the role of `Contributor` to the deployed application.
+Open the `Access Control (IAM)` of automatic updates target CDN Profile / Front Door or resource group containing the CDN Profile / Front Door, and assign the role of `Contributor` to the deployed application.
 
 ### 3. Add to Key Vault access policies
 
