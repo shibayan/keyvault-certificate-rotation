@@ -7,7 +7,7 @@ using Microsoft.Azure.Management.Cdn.Models;
 
 namespace KeyVault.CertificateRotation.Internal
 {
-    internal static class AzureCdnExtensions
+    internal static class CdnExtensions
     {
         public static async Task<IList<Profile>> SafeListAllAsync(this IProfilesOperations operations)
         {
