@@ -15,7 +15,7 @@
     "appServicePlanName": "[concat('plan-', parameters('appNamePrefix'), '-', substring(uniquestring(resourceGroup().id, deployment().name), 0, 4))]",
     "appInsightsName": "[concat('appi-', parameters('appNamePrefix'), '-', substring(uniquestring(resourceGroup().id, deployment().name), 0, 4))]",
     "storageAccountName": "[concat('st', uniquestring(resourceGroup().id, deployment().name), 'func')]",
-    "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+    "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
   },
   "resources": [
     {
