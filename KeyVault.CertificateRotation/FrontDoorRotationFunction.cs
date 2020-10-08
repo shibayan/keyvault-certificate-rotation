@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 
 using KeyVault.CertificateRotation.Internal;
 
-using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Management.FrontDoor;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
@@ -13,13 +12,13 @@ namespace KeyVault.CertificateRotation
 {
     public class FrontDoorRotationFunction
     {
-        public FrontDoorRotationFunction(KeyVaultClient keyVaultClient, FrontDoorManagementClient frontDoorManagementClient)
+        public FrontDoorRotationFunction(ICertificateClientFactory certificateClientFactory, FrontDoorManagementClient frontDoorManagementClient)
         {
-            _keyVaultClient = keyVaultClient;
+            _certificateClientFactory = certificateClientFactory;
             _frontDoorManagementClient = frontDoorManagementClient;
         }
 
-        private readonly KeyVaultClient _keyVaultClient;
+        private readonly ICertificateClientFactory _certificateClientFactory;
         private readonly FrontDoorManagementClient _frontDoorManagementClient;
 
         [FunctionName(nameof(FrontDoorRotation))]
@@ -52,18 +51,18 @@ namespace KeyVault.CertificateRotation
                     log.LogInformation($"Secret Name: {frontendEndpoint.CustomHttpsConfiguration.SecretName}");
                     log.LogInformation($"Secret Version: {frontendEndpoint.CustomHttpsConfiguration.SecretVersion}");
 
-                    var latestCertificate = await _keyVaultClient.GetCertificateAsync(
-                        $"https://{vaultName}.vault.azure.net/",
-                        frontendEndpoint.CustomHttpsConfiguration.SecretName);
+                    var certificateClient = _certificateClientFactory.CreateClient(vaultName);
 
-                    if (latestCertificate.CertificateIdentifier.Version == frontendEndpoint.CustomHttpsConfiguration.SecretVersion)
+                    var latestCertificate = await certificateClient.GetCertificateAsync(frontendEndpoint.CustomHttpsConfiguration.SecretName);
+
+                    if (latestCertificate.Value.Properties.Version == frontendEndpoint.CustomHttpsConfiguration.SecretVersion)
                     {
                         continue;
                     }
 
-                    log.LogInformation($"Target Secret Version: {latestCertificate.CertificateIdentifier.Version}");
+                    log.LogInformation($"Target Secret Version: {latestCertificate.Value.Properties.Version}");
 
-                    frontendEndpoint.CustomHttpsConfiguration.SecretVersion = latestCertificate.CertificateIdentifier.Version;
+                    frontendEndpoint.CustomHttpsConfiguration.SecretVersion = latestCertificate.Value.Properties.Version;
 
                     tasks.Add(_frontDoorManagementClient.FrontendEndpoints.EnableHttpsAsync(resourceGroupName, frontDoor.Name, frontendEndpoint.Name, frontendEndpoint.CustomHttpsConfiguration));
                 }
