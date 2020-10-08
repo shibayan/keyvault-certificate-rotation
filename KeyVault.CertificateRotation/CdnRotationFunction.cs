@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 
 using KeyVault.CertificateRotation.Internal;
 
-using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Management.Cdn;
 using Microsoft.Azure.Management.Cdn.Models;
 using Microsoft.Azure.WebJobs;
@@ -13,13 +12,13 @@ namespace KeyVault.CertificateRotation
 {
     public class CdnRotationFunction
     {
-        public CdnRotationFunction(KeyVaultClient keyVaultClient, CdnManagementClient cdnManagementClient)
+        public CdnRotationFunction(ICertificateClientFactory certificateClientFactory, CdnManagementClient cdnManagementClient)
         {
-            _keyVaultClient = keyVaultClient;
+            _certificateClientFactory = certificateClientFactory;
             _cdnManagementClient = cdnManagementClient;
         }
 
-        private readonly KeyVaultClient _keyVaultClient;
+        private readonly ICertificateClientFactory _certificateClientFactory;
         private readonly CdnManagementClient _cdnManagementClient;
 
         [FunctionName(nameof(CdnRotation))]
@@ -58,18 +57,18 @@ namespace KeyVault.CertificateRotation
                         log.LogInformation($"Secret Name: {httpsParameters.CertificateSourceParameters.SecretName}");
                         log.LogInformation($"Secret Version: {httpsParameters.CertificateSourceParameters.SecretVersion}");
 
-                        var latestCertificate = await _keyVaultClient.GetCertificateAsync(
-                            $"https://{httpsParameters.CertificateSourceParameters.VaultName}.vault.azure.net/",
-                            httpsParameters.CertificateSourceParameters.SecretName);
+                        var certificateClient = _certificateClientFactory.CreateClient(httpsParameters.CertificateSourceParameters.VaultName);
 
-                        if (latestCertificate.CertificateIdentifier.Version == httpsParameters.CertificateSourceParameters.SecretVersion)
+                        var latestCertificate = await certificateClient.GetCertificateAsync(httpsParameters.CertificateSourceParameters.SecretName);
+
+                        if (latestCertificate.Value.Properties.Version == httpsParameters.CertificateSourceParameters.SecretVersion)
                         {
                             continue;
                         }
 
-                        log.LogInformation($"Target Secret Version: {latestCertificate.CertificateIdentifier.Version}");
+                        log.LogInformation($"Target Secret Version: {latestCertificate.Value.Properties.Version}");
 
-                        httpsParameters.CertificateSourceParameters.SecretVersion = latestCertificate.CertificateIdentifier.Version;
+                        httpsParameters.CertificateSourceParameters.SecretVersion = latestCertificate.Value.Properties.Version;
 
                         tasks.Add(_cdnManagementClient.CustomDomains.EnableCustomHttpsAsync(resourceGroupName, cdnProfile.Name, cdnEndpoint.Name, cdnCustomDomain.Name, httpsParameters));
                     }
