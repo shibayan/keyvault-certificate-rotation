@@ -32,6 +32,14 @@ Open the `Access Control (IAM)` of automatic updates target CDN Profile / Front 
 
 Open the access policy of the Key Vault and add the `Certificate management` access policy for the deployed application.
 
+## Limitations
+
+### Moving Key Vault to another subscription or resource group
+
+Moving Key Vault to another subscription or resource group will result in certificate auto-renewal failing due to CDN / Front Door mismatch in association. After the move you need to manually set Key Vault certificate to the CDN / Front Door again.
+
+See https://github.com/shibayan/keyvault-certificate-rotation/issues/13#issuecomment-744166743
+
 ## License
 
 This project is licensed under the [Apache License 2.0](https://github.com/shibayan/keyvault-certificate-rotation/blob/master/LICENSE)
