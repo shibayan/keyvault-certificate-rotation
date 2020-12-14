@@ -12,14 +12,16 @@ namespace KeyVault.CertificateRotation
 {
     public class FrontDoorRotationFunction
     {
-        public FrontDoorRotationFunction(ICertificateClientFactory certificateClientFactory, FrontDoorManagementClient frontDoorManagementClient)
+        public FrontDoorRotationFunction(CertificateClientFactory certificateClientFactory, FrontDoorManagementClient frontDoorManagementClient, KeyVaultResolver keyVaultResolver)
         {
             _certificateClientFactory = certificateClientFactory;
             _frontDoorManagementClient = frontDoorManagementClient;
+            _keyVaultResolver = keyVaultResolver;
         }
 
-        private readonly ICertificateClientFactory _certificateClientFactory;
+        private readonly CertificateClientFactory _certificateClientFactory;
         private readonly FrontDoorManagementClient _frontDoorManagementClient;
+        private readonly KeyVaultResolver _keyVaultResolver;
 
         [FunctionName(nameof(FrontDoorRotation))]
         public async Task FrontDoorRotation([TimerTrigger("0 0 0 * * *")] TimerInfo timer, ILogger log)
@@ -62,6 +64,16 @@ namespace KeyVault.CertificateRotation
 
                     log.LogInformation($"Target Secret Version: {latestCertificate.Value.Properties.Version}");
 
+                    var result = await _keyVaultResolver.ResolveAsync(vaultName);
+
+                    if (result == null)
+                    {
+                        log.LogError($"Key Vault \"{vaultName}\" was not found.");
+
+                        continue;
+                    }
+
+                    frontendEndpoint.CustomHttpsConfiguration.Vault.Id = result.Id;
                     frontendEndpoint.CustomHttpsConfiguration.SecretVersion = latestCertificate.Value.Properties.Version;
 
                     tasks.Add(_frontDoorManagementClient.FrontendEndpoints.EnableHttpsAsync(resourceGroupName, frontDoor.Name, frontendEndpoint.Name, frontendEndpoint.CustomHttpsConfiguration));

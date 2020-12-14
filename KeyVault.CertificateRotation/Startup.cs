@@ -19,16 +19,28 @@ namespace KeyVault.CertificateRotation
         {
             var subscriptionId = Environment.GetEnvironmentVariable("WEBSITE_OWNER_NAME").Split('+')[0];
 
-            builder.Services.AddSingleton<ICertificateClientFactory, CertificateClientFactory>();
+            builder.Services.AddSingleton<CertificateClientFactory>();
+            builder.Services.AddSingleton(new TokenCredentials(new ManagedIdentityTokenProvider()));
 
-            builder.Services.AddSingleton(provider => new CdnManagementClient(new TokenCredentials(new ManagedIdentityTokenProvider()))
+            builder.Services.AddSingleton(provider =>
             {
-                SubscriptionId = subscriptionId
+                var tokenCredentials = provider.GetRequiredService<TokenCredentials>();
+
+                return new KeyVaultResolver(subscriptionId, tokenCredentials);
             });
 
-            builder.Services.AddSingleton(provider => new FrontDoorManagementClient(new TokenCredentials(new ManagedIdentityTokenProvider()))
+            builder.Services.AddSingleton(provider =>
             {
-                SubscriptionId = subscriptionId
+                var tokenCredentials = provider.GetRequiredService<TokenCredentials>();
+
+                return new CdnManagementClient(tokenCredentials) { SubscriptionId = subscriptionId };
+            });
+
+            builder.Services.AddSingleton(provider =>
+            {
+                var tokenCredentials = provider.GetRequiredService<TokenCredentials>();
+
+                return new FrontDoorManagementClient(tokenCredentials) { SubscriptionId = subscriptionId };
             });
         }
     }

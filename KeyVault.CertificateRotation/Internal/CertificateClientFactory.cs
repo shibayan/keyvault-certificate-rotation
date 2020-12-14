@@ -5,12 +5,7 @@ using Azure.Security.KeyVault.Certificates;
 
 namespace KeyVault.CertificateRotation.Internal
 {
-    public interface ICertificateClientFactory
-    {
-        CertificateClient CreateClient(string vaultName);
-    }
-
-    public class CertificateClientFactory : ICertificateClientFactory
+    public class CertificateClientFactory
     {
         public CertificateClient CreateClient(string vaultName)
         {

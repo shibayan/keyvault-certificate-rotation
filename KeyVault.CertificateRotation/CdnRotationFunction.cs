@@ -12,14 +12,16 @@ namespace KeyVault.CertificateRotation
 {
     public class CdnRotationFunction
     {
-        public CdnRotationFunction(ICertificateClientFactory certificateClientFactory, CdnManagementClient cdnManagementClient)
+        public CdnRotationFunction(CertificateClientFactory certificateClientFactory, CdnManagementClient cdnManagementClient, KeyVaultResolver keyVaultResolver)
         {
             _certificateClientFactory = certificateClientFactory;
             _cdnManagementClient = cdnManagementClient;
+            _keyVaultResolver = keyVaultResolver;
         }
 
-        private readonly ICertificateClientFactory _certificateClientFactory;
+        private readonly CertificateClientFactory _certificateClientFactory;
         private readonly CdnManagementClient _cdnManagementClient;
+        private readonly KeyVaultResolver _keyVaultResolver;
 
         [FunctionName(nameof(CdnRotation))]
         public async Task CdnRotation([TimerTrigger("0 0 0 * * *")] TimerInfo timer, ILogger log)
@@ -68,6 +70,17 @@ namespace KeyVault.CertificateRotation
 
                         log.LogInformation($"Target Secret Version: {latestCertificate.Value.Properties.Version}");
 
+                        var result = await _keyVaultResolver.ResolveAsync(httpsParameters.CertificateSourceParameters.VaultName);
+
+                        if (result == null)
+                        {
+                            log.LogError($"Key Vault \"{httpsParameters.CertificateSourceParameters.VaultName}\" was not found.");
+
+                            continue;
+                        }
+
+                        httpsParameters.CertificateSourceParameters.SubscriptionId = result.SubscriptionId;
+                        httpsParameters.CertificateSourceParameters.ResourceGroupName = result.ResourceGroup;
                         httpsParameters.CertificateSourceParameters.SecretVersion = latestCertificate.Value.Properties.Version;
 
                         tasks.Add(_cdnManagementClient.CustomDomains.EnableCustomHttpsAsync(resourceGroupName, cdnProfile.Name, cdnEndpoint.Name, cdnCustomDomain.Name, httpsParameters));
