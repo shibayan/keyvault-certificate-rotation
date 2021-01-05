@@ -12,13 +12,13 @@ namespace KeyVault.CertificateRotation
 {
     public class CdnRotationFunction
     {
-        public CdnRotationFunction(ICertificateClientFactory certificateClientFactory, CdnManagementClient cdnManagementClient)
+        public CdnRotationFunction(CertificateClientFactory certificateClientFactory, CdnManagementClient cdnManagementClient)
         {
             _certificateClientFactory = certificateClientFactory;
             _cdnManagementClient = cdnManagementClient;
         }
 
-        private readonly ICertificateClientFactory _certificateClientFactory;
+        private readonly CertificateClientFactory _certificateClientFactory;
         private readonly CdnManagementClient _cdnManagementClient;
 
         [FunctionName(nameof(CdnRotation))]
