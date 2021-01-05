@@ -46,9 +46,7 @@ namespace KeyVault.CertificateRotation
                     {
                         log.LogInformation($"Custom Domain: {cdnCustomDomain.Name}");
 
-                        var httpsParameters = cdnCustomDomain.CustomHttpsParameters as UserManagedHttpsParameters;
-
-                        if (httpsParameters == null)
+                        if (!(cdnCustomDomain.CustomHttpsParameters is UserManagedHttpsParameters httpsParameters))
                         {
                             continue;
                         }
