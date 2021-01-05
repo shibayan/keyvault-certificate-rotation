@@ -12,13 +12,13 @@ namespace KeyVault.CertificateRotation
 {
     public class FrontDoorRotationFunction
     {
-        public FrontDoorRotationFunction(ICertificateClientFactory certificateClientFactory, FrontDoorManagementClient frontDoorManagementClient)
+        public FrontDoorRotationFunction(CertificateClientFactory certificateClientFactory, FrontDoorManagementClient frontDoorManagementClient)
         {
             _certificateClientFactory = certificateClientFactory;
             _frontDoorManagementClient = frontDoorManagementClient;
         }
 
-        private readonly ICertificateClientFactory _certificateClientFactory;
+        private readonly CertificateClientFactory _certificateClientFactory;
         private readonly FrontDoorManagementClient _frontDoorManagementClient;
 
         [FunctionName(nameof(FrontDoorRotation))]

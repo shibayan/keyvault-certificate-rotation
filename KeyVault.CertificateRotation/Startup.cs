@@ -19,7 +19,7 @@ namespace KeyVault.CertificateRotation
         {
             var subscriptionId = Environment.GetEnvironmentVariable("WEBSITE_OWNER_NAME").Split('+')[0];
 
-            builder.Services.AddSingleton<ICertificateClientFactory, CertificateClientFactory>();
+            builder.Services.AddSingleton<CertificateClientFactory>();
 
             builder.Services.AddSingleton(provider => new CdnManagementClient(new TokenCredentials(new ManagedIdentityTokenProvider()))
             {
