@@ -22,7 +22,7 @@ namespace KeyVault.CertificateRotation
         private readonly FrontDoorManagementClient _frontDoorManagementClient;
 
         [FunctionName(nameof(FrontDoorRotation))]
-        public async Task FrontDoorRotation([TimerTrigger("0 0 0 * * 1")] TimerInfo timer, ILogger log)
+        public async Task FrontDoorRotation([TimerTrigger("0 0 0 * * 1,5")] TimerInfo timer, ILogger log)
         {
             var tasks = new List<Task>();
 
